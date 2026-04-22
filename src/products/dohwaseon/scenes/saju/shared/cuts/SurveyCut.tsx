@@ -20,11 +20,19 @@ type SurveyCutProps =
       step: 3;
       config: SurveyTextStep;
       onAnswer: (text: string) => void;
+      // 캐릭터별 마지막 제출 버튼 문구 (예: "도윤에게 알려주기 →", "연우에게 알려주기 →")
+      buttonLabel?: string;
     };
 
 export default function SurveyCut(props: SurveyCutProps) {
   if (props.step === 3) {
-    return <SurveyFreeText step={props.config} onNext={props.onAnswer} />;
+    return (
+      <SurveyFreeText
+        step={props.config}
+        onNext={props.onAnswer}
+        buttonLabel={props.buttonLabel}
+      />
+    );
   }
   return <SurveyMultiSelect step={props.config} onNext={props.onAnswer} />;
 }
