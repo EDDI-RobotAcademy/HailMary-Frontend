@@ -54,15 +54,15 @@
 | Step | 제목 | 예상 공수 | PR 전략 | 상태 |
 |---|---|---|---|---|
 | 1 | 공용 컴포넌트 승격 | 0.5일 | 단독 PR | ✅ 완료 |
-| 2 | `useCutProgression` 훅 추출 (도윤) | 0.5~1일 | 단독 PR | 🟨 진행중 |
-| 3 | `useCharacterSajuFlow` 훅 추출 (도윤) | 1일 | 단독 PR | ⬜ 미착수 |
+| 2 | `useCutProgression` 훅 추출 (도윤) | 0.5~1일 | 단독 PR | ✅ 완료 |
+| 3 | `useCharacterSajuFlow` 훅 추출 (도윤) | 1일 | 단독 PR | 🟨 진행중 |
 | 4 | 도윤 씬 cut 렌더러 분해 | 1~1.5일 | 단독 PR | ⬜ 미착수 |
 | 5 | 연우 씬에 동일 구조 적용 | 0.5일 | 단독 PR | ⬜ 미착수 |
 | 6 | 최종 QA + 정리 | 0.5~1일 | 단독 PR | ⬜ 미착수 |
 
 **상태 표기 규칙**: ⬜ 미착수 / 🟨 진행중 / ✅ 완료 / ⚠️ 차단/이슈
 
-**현재 진행 중인 단계**: Step 2 (`useCutProgression` 훅 추출, 도윤 씬)
+**현재 진행 중인 단계**: Step 3 (`useCharacterSajuFlow` 훅 추출, 도윤 씬)
 
 ---
 
@@ -108,7 +108,7 @@ products/dohwaseon/scenes/saju/shared/
 - [x] `grep -r "doyoon/components" src/` 결과 0건 ✓
 
 **결과란** (완료 후 기입)
-- 커밋 해시: (수동 QA 통과 후 커밋 예정)
+- 커밋 해시: `b551250`
 - 이동 파일 수: **11개** (컴포넌트 6개 + result/ 하위 5개)
 - 생성 파일: `src/products/dohwaseon/scenes/saju/shared/types.ts` (공용 타입 5개)
 - 수정 파일 (6):
@@ -126,7 +126,7 @@ products/dohwaseon/scenes/saju/shared/
 
 ## Step 2 — `useCutProgression` 훅 추출 (도윤 씬에만 적용)
 
-**상태**: ⬜ 미착수
+**상태**: ✅ **완료** (2026-04-22)
 
 **목표**
 시네마틱 연출 상태기계(cutIndex, lineIndex, displayedCount, fading, crossFading, leanInZoomed, ctaVisible + 타이핑 타이머)를 **useReducer 기반 단일 훅**으로 분리. 도윤 씬 먼저 적용해서 동작 검증 후 연우는 Step 5에서.
@@ -166,17 +166,19 @@ export function useCutProgression(cuts: Cut[]): CutProgressionAPI;
 - 연우 씬은 건드리지 않음 (Step 5에서)
 
 **검증**
-- [ ] `npm run build` 통과
-- [ ] 도윤 씬 전체 플레이 — 타이핑 속도, 크로스페이드, lean-in 줌, CTA 노출 타이밍 **프레임 단위 불변** 확인
-- [ ] 기준 스냅샷과 비교
-- [ ] `DoyoonSajuScene.tsx`의 useState 개수 감소 확인 (11 → 약 4개)
+- [x] `npm run build` 통과 ✓
+- [x] 도윤 씬 전체 플레이 — 사용자 확인: "바뀐거 없이 그대로"
+- [x] 기준 스냅샷과 비교 (수동 QA 통과)
+- [x] `DoyoonSajuScene.tsx`의 useState 개수 감소 확인 (11 → 4)
 
 **결과란**
-- 커밋 해시:
-- 도윤 씬 최종 줄 수:
-- useState 감소 (11 → N):
-- 타이밍 회귀 이슈:
-- QA 결과:
+- 커밋 해시: (커밋 진행 중, 아래 업데이트 예정)
+- 도윤 씬 최종 줄 수: **405** (529 → 405, -124줄, -23%)
+- useState 감소: **11 → 4** (목표 달성)
+- useEffect 감소: **7 → 4** (타이핑·자동진행·줌·CTA 4개 훅으로 이동)
+- 신규 훅: `shared/hooks/useCutProgression.ts` 215줄 (도윤·연우 공용)
+- 타이밍 회귀 이슈: 없음 (동작 불변)
+- QA 결과: **통과** — 사용자 수동 플레이 확인됨
 
 ---
 

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DOYOON_CUTS, type Cut } from "./data/cuts";
 import DialogueOverlay from "../shared/components/DialogueOverlay";
 import AsideComment from "../shared/components/AsideComment";
@@ -13,8 +13,8 @@ import SurveyFreeText from "../shared/components/SurveyFreeText";
 import { SURVEY_STEPS, type SurveyAnswers } from "./data/surveyOptions";
 import { MOCK_SAJU } from "./data/mockSaju";
 import { postSajuSurvey, useSajuCalculate } from "@/features/saju";
+import { useCutProgression } from "../shared/hooks/useCutProgression";
 
-const CHAR_DELAY = 32;
 const IS_DEV = process.env.NODE_ENV !== "production";
 const SURFACE = "#141311";
 
@@ -24,33 +24,30 @@ const CROSSFADE_ENTER = new Set<number>([
   9, // cut 10: analysis-result
 ]);
 
-function hasLines(c: Cut): c is Extract<Cut, { lines: string[] }> {
-  return "lines" in c;
-}
-
 function getBg(c: Cut): string | null {
   return "bg" in c ? c.bg : null;
 }
 
-function isUiCut(c: Cut): boolean {
-  return (
-    c.type === "info-form" ||
-    c.type === "analysis-loading" ||
-    c.type === "analysis-result" ||
-    c.type === "survey" ||
-    c.type === "tablet-handoff"
-  );
-}
-
 export default function DoyoonSajuScene() {
   const router = useRouter();
-  const [cutIndex, setCutIndex] = useState(0);
-  const [lineIndex, setLineIndex] = useState(0);
-  const [displayedCount, setDisplayedCount] = useState(0);
-  const [fading, setFading] = useState(false);
-  const [crossFading, setCrossFading] = useState(false);
-  const [leanInZoomed, setLeanInZoomed] = useState(false);
-  const [ctaVisible, setCtaVisible] = useState(false);
+  const {
+    cut,
+    cutIndex,
+    lineIndex,
+    displayedCount,
+    fullText,
+    isComplete,
+    fading,
+    crossFading,
+    leanInZoomed,
+    ctaVisible,
+    handleTap,
+    goToCut,
+    jumpTo,
+  } = useCutProgression<Cut>(DOYOON_CUTS, {
+    crossfadeOnEnter: CROSSFADE_ENTER,
+  });
+
   const [surveyAnswers, setSurveyAnswers] = useState<SurveyAnswers>({
     step1: [],
     step2: [],
@@ -69,77 +66,6 @@ export default function DoyoonSajuScene() {
       if (info?.name) setUserName(info.name);
     } catch {}
   }, []);
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cut = DOYOON_CUTS[cutIndex];
-
-  const fullText = hasLines(cut) ? cut.lines[lineIndex] ?? "" : "";
-  const isComplete =
-    hasLines(cut) && fullText.length > 0 && displayedCount >= fullText.length;
-
-  const clearTyping = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  // 타이핑 효과
-  useEffect(() => {
-    if (!hasLines(cut)) return;
-    if (displayedCount >= fullText.length) return;
-    timerRef.current = setTimeout(() => {
-      setDisplayedCount((c) => c + 1);
-    }, CHAR_DELAY);
-    return clearTyping;
-  }, [displayedCount, fullText, clearTyping, cut]);
-
-  const resetLineState = useCallback(() => {
-    setLineIndex(0);
-    setDisplayedCount(0);
-  }, []);
-
-  // 컷 이동
-  const goToCut = useCallback(
-    (next: number) => {
-      const nextCut = DOYOON_CUTS[next];
-      if (!nextCut) return;
-
-      const useCrossfade = CROSSFADE_ENTER.has(next);
-
-      if (useCrossfade) {
-        setCrossFading(true);
-        setTimeout(() => {
-          setCutIndex(next);
-          resetLineState();
-          setLeanInZoomed(false);
-          setCtaVisible(false);
-          setCrossFading(false);
-        }, 400);
-        return;
-      }
-
-      const needsDarkFade = isUiCut(cut) || isUiCut(nextCut);
-      const duration = needsDarkFade ? 380 : 280;
-
-      setFading(true);
-      setTimeout(() => {
-        setCutIndex(next);
-        resetLineState();
-        setLeanInZoomed(false);
-        setCtaVisible(false);
-        setFading(false);
-      }, duration);
-    },
-    [cut, resetLineState],
-  );
-
-  // tablet-handoff 자동 진행 (1.4초)
-  useEffect(() => {
-    if (cut.type !== "tablet-handoff") return;
-    const t = setTimeout(() => goToCut(cutIndex + 1), 1400);
-    return () => clearTimeout(t);
-  }, [cutIndex, cut.type, goToCut]);
 
   // analysis-loading: API 응답 + 최소 1.2초 노출 양쪽 충족 시 다음 컷으로
   useEffect(() => {
@@ -169,67 +95,11 @@ export default function DoyoonSajuScene() {
     } catch {}
   }, [saju.status, saju.data]);
 
-  // final-leanin 진입 시 줌 + bg 전환 (state는 goToCut/jumpTo에서 초기화됨)
-  useEffect(() => {
-    if (cut.type !== "final-leanin") return;
-    const t = setTimeout(() => setLeanInZoomed(true), 250);
-    return () => clearTimeout(t);
-  }, [cutIndex, cut.type]);
-
-  // 마지막 라인 후 CTA 표시
-  useEffect(() => {
-    if (cut.type !== "final-leanin") return;
-    if (!isComplete || !hasLines(cut) || lineIndex !== cut.lines.length - 1)
-      return;
-    const t = setTimeout(() => setCtaVisible(true), 600);
-    return () => clearTimeout(t);
-  }, [cut, isComplete, lineIndex]);
-
-  // 탭 처리 (대사 컷에서만)
-  const handleTap = () => {
-    if (crossFading || fading) return;
-    if (!hasLines(cut)) return;
-
-    if (!isComplete) {
-      clearTyping();
-      setDisplayedCount(fullText.length);
-      return;
-    }
-
-    if (lineIndex < cut.lines.length - 1) {
-      setLineIndex(lineIndex + 1);
-      setDisplayedCount(0);
-      return;
-    }
-
-    // final-leanin은 마지막 라인 후 CTA만 표시 (탭으로 진행 안 함)
-    if (cut.type === "final-leanin") return;
-
-    goToCut(cutIndex + 1);
-  };
-
   // CTA 클릭
   const handleCta = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log("[TODO] 결제 라우트로 이동");
     alert("결제 페이지는 준비 중입니다.");
-  };
-
-  // 개발용 네비
-  const jumpTo = (delta: -1 | 1) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const next = Math.max(
-      0,
-      Math.min(DOYOON_CUTS.length - 1, cutIndex + delta),
-    );
-    if (next === cutIndex) return;
-    clearTyping();
-    setCutIndex(next);
-    resetLineState();
-    setFading(false);
-    setCrossFading(false);
-    setLeanInZoomed(false);
-    setCtaVisible(false);
   };
 
   const bgImage = getBg(cut);
@@ -491,7 +361,10 @@ export default function DoyoonSajuScene() {
       {IS_DEV && (
         <div className="absolute left-3 top-3 z-50 flex items-center gap-1.5">
           <button
-            onClick={jumpTo(-1)}
+            onClick={(e) => {
+              e.stopPropagation();
+              jumpTo(-1);
+            }}
             disabled={cutIndex === 0}
             className="rounded-md px-2.5 py-1 text-[11px] backdrop-blur transition-opacity active:opacity-80 disabled:opacity-25"
             style={{ background: "rgba(0,0,0,0.6)", color: "white" }}
@@ -505,7 +378,10 @@ export default function DoyoonSajuScene() {
             {cutIndex + 1} / {DOYOON_CUTS.length}
           </span>
           <button
-            onClick={jumpTo(1)}
+            onClick={(e) => {
+              e.stopPropagation();
+              jumpTo(1);
+            }}
             disabled={cutIndex === DOYOON_CUTS.length - 1}
             className="rounded-md px-2.5 py-1 text-[11px] backdrop-blur transition-opacity active:opacity-80 disabled:opacity-25"
             style={{ background: "rgba(0,0,0,0.6)", color: "white" }}
