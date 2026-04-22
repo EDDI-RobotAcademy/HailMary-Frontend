@@ -94,13 +94,25 @@ src/
 │       ├── scenes/               # 씬별 UI와 연출
 │       │   ├── landing/
 │       │   ├── intro/
-│       │   └── character-select/
+│       │   ├── character-select/
+│       │   └── saju/             # 무료 사주 씬 (캐릭터별 + 공용)
+│       │       ├── doyoon/       # 도윤 씬 진입 + 도윤 전용 data
+│       │       ├── yeonwoo/      # 연우 씬 진입 + 연우 전용 data
+│       │       └── shared/       # 도윤/연우 공용 자산
+│       │           ├── components/  # InfoForm, DialogueOverlay, Survey* 등
+│       │           ├── hooks/       # useCutProgression, useCharacterSajuFlow
+│       │           ├── cuts/        # LoadingCut, SurveyCut, CtaOverlay
+│       │           └── types.ts     # SurveyAnswers 등 공용 타입
 │       └── data/                 # 스토리 스크립트, 캐릭터 데이터
 │           ├── characters.ts     # 강연우, 한도윤 데이터
 │           └── story.ts          # 인트로 대사, 세계관
 │
 ├── features/                     # Product 간 재사용 기능
-│   └── (현재 없음 — 필요 시점에 추가)
+│   └── saju/                     # 사주 계산 API·훅·타입 (백엔드 계약)
+│       ├── api.ts                # postSajuFree, postSajuSurvey
+│       ├── hooks.ts              # useSajuCalculate
+│       ├── types.ts              # SajuFreeResponse, Pillar 등
+│       └── constants.ts
 │
 ├── components/                   # 공통 UI 컴포넌트
 │   ├── Button.tsx
@@ -135,6 +147,7 @@ products/dohwaseon/scenes/{scene-name}/
 - 비즈니스 로직은 `features/` 또는 `lib/`에서 import해서 쓴다.
 - Scene 간 직접 import 금지. 공통 컴포넌트는 `components/`로 승격.
 - 씬별 애니메이션, 스타일, 배경 이미지는 해당 씬 폴더 내부에 격리.
+- **같은 상품 내 여러 씬이 공유하는 자산**은 해당 씬 그룹 하위에 `shared/` 폴더로 격리. 예: `scenes/saju/shared/{components,hooks,cuts,types.ts}` — 도윤·연우 사주 씬이 공통으로 쓰는 자산. 타 상품이나 타 씬 그룹에서 참조 금지.
 
 ---
 
