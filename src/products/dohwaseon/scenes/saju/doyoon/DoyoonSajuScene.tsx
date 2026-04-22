@@ -8,12 +8,13 @@ import DialogueOverlay from "../shared/components/DialogueOverlay";
 import AsideComment from "../shared/components/AsideComment";
 import InfoForm from "../shared/components/InfoForm";
 import SajuChartCards from "../shared/components/SajuChartCards";
-import SurveyMultiSelect from "../shared/components/SurveyMultiSelect";
-import SurveyFreeText from "../shared/components/SurveyFreeText";
 import { SURVEY_STEPS } from "./data/surveyOptions";
 import { MOCK_SAJU } from "./data/mockSaju";
 import { useCutProgression } from "../shared/hooks/useCutProgression";
 import { useCharacterSajuFlow } from "../shared/hooks/useCharacterSajuFlow";
+import LoadingCut from "../shared/cuts/LoadingCut";
+import SurveyCut from "../shared/cuts/SurveyCut";
+import CtaOverlay from "../shared/cuts/CtaOverlay";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 const SURFACE = "#141311";
@@ -173,50 +174,12 @@ export default function DoyoonSajuScene() {
 
       {/* 분석 중 표시 (로딩 / 느린 응답 / 에러) */}
       {!fading && cut.type === "analysis-loading" && (
-        <div className="relative z-10 my-auto px-6 text-center">
-          {sajuStatus === "error" && sajuError ? (
-            <>
-              <p
-                className="text-[12px] leading-relaxed"
-                style={{ color: "#F5EDE0" }}
-              >
-                {sajuError.message}
-              </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  retrySaju();
-                }}
-                className="mt-5 rounded-full px-5 py-2 text-[11px] tracking-[0.3em]"
-                style={{
-                  background: "rgba(230,197,142,0.18)",
-                  color: "#FFE2B3",
-                  borderTop: "1px solid rgba(245,237,224,0.12)",
-                }}
-              >
-                다시 시도
-              </button>
-            </>
-          ) : (
-            <>
-              <p
-                className="text-[11px] tracking-[0.4em]"
-                style={{ color: "rgba(230,197,142,0.85)" }}
-              >
-                {showSlowMessage ? "별의 배치를 읽는 중…" : "데이터 분석 중"}
-              </p>
-              <div className="mx-auto mt-3 flex justify-center gap-1.5">
-                {[0, 150, 300].map((d) => (
-                  <span
-                    key={d}
-                    className="h-1 w-1 animate-pulse rounded-full"
-                    style={{ background: "#E6C58E", animationDelay: `${d}ms` }}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <LoadingCut
+          status={sajuStatus}
+          error={sajuError}
+          showSlowMessage={showSlowMessage}
+          onRetry={retrySaju}
+        />
       )}
 
       {/* 정보 입력 폼 (cut 8) */}
@@ -239,30 +202,32 @@ export default function DoyoonSajuScene() {
         />
       )}
 
-      {/* 설문 1/3, 2/3 — 다중선택 */}
+      {/* 설문 3단계 (1, 2 = 다중선택 / 3 = 자유 서술) */}
       {!fading && cut.type === "survey" && cut.step === 1 && (
-        <SurveyMultiSelect
-          step={SURVEY_STEPS[1]}
-          onNext={(answers) => {
+        <SurveyCut
+          step={1}
+          config={SURVEY_STEPS[1]}
+          onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step1: answers }));
             goToCut(cutIndex + 1);
           }}
         />
       )}
       {!fading && cut.type === "survey" && cut.step === 2 && (
-        <SurveyMultiSelect
-          step={SURVEY_STEPS[2]}
-          onNext={(answers) => {
+        <SurveyCut
+          step={2}
+          config={SURVEY_STEPS[2]}
+          onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step2: answers }));
             goToCut(cutIndex + 1);
           }}
         />
       )}
-      {/* 설문 3/3 — 자유 서술 */}
       {!fading && cut.type === "survey" && cut.step === 3 && (
-        <SurveyFreeText
-          step={SURVEY_STEPS[3]}
-          onNext={(text) => {
+        <SurveyCut
+          step={3}
+          config={SURVEY_STEPS[3]}
+          onAnswer={(text) => {
             finalizeSurvey({ ...surveyAnswers, step3: text });
             goToCut(cutIndex + 1);
           }}
@@ -270,23 +235,7 @@ export default function DoyoonSajuScene() {
       )}
 
       {/* 마지막 컷 CTA */}
-      {isLeanIn && ctaVisible && !fading && (
-        <div
-          className="absolute bottom-10 left-0 right-0 z-20 px-6 animate-[fadeIn_0.6s_ease-out]"
-        >
-          <button
-            onClick={handleCta}
-            className="w-full rounded-2xl py-4 text-sm font-bold tracking-[0.3em] transition-transform active:scale-[0.98]"
-            style={{
-              background: "linear-gradient(135deg, #FFE2B3, #E6C58E)",
-              color: "#412d04",
-              boxShadow: "0 0 32px rgba(230,197,142,0.25)",
-            }}
-          >
-            결제하고 풀스토리 보기 →
-          </button>
-        </div>
-      )}
+      {isLeanIn && ctaVisible && !fading && <CtaOverlay onClick={handleCta} />}
 
       {/* 우상단: 상담사 변경 */}
       <button
