@@ -237,6 +237,7 @@ export function useIntroScene() {
       setIsComplete(false);
     } else {
       trackEvent("intro_step_complete", { step: stepIndex });
+      trackEvent("scenario_progress", { chapter_index: stepIndex });
       goToStep(stepIndex + 1);
     }
   };
@@ -244,10 +245,12 @@ export function useIntroScene() {
   const handleVideoEnd = () => { goToStep(stepIndex + 1); };
   const handleDoorClick = () => {
     trackEvent("intro_step_complete", { step: stepIndex });
+    trackEvent("scenario_progress", { chapter_index: stepIndex });
     goToStep(stepIndex + 1);
   };
   const handleButtonClick = () => {
     trackEvent("intro_step_complete", { step: stepIndex });
+    trackEvent("scenario_progress", { chapter_index: stepIndex });
     goToStep(stepIndex + 1);
   };
 

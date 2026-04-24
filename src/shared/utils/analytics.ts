@@ -27,7 +27,7 @@ declare const amplitude:
   | undefined;
 // ▲ 삭제 대상
 
-function getDeviceId(): string {
+export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
   const key = "hm_device_id";
   let id = localStorage.getItem(key);
@@ -38,7 +38,7 @@ function getDeviceId(): string {
   return id;
 }
 
-function getSessionId(): string {
+export function getSessionId(): string {
   if (typeof window === "undefined") return "";
   const key = "hm_session_id";
   let id = sessionStorage.getItem(key);
