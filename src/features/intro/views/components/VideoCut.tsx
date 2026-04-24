@@ -15,7 +15,7 @@ export function VideoCut({ step, muted, videoRef, onEnded }: VideoCutProps) {
     <video
       ref={videoRef}
       src={step.src}
-      className="absolute inset-0 h-full w-full object-cover"
+      className="absolute inset-0 h-full w-full object-cover pointer-events-none"
       autoPlay
       playsInline
       muted={muted}
