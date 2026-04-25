@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SurveyMultiStep } from "@/features/saju/domain/types";
+import { trackEvent } from "@/shared/utils/analytics";
 
 type Props = {
   step: SurveyMultiStep;
   onNext: (selected: string[]) => void;
+  characterId?: string;
 };
 
-export default function SurveyMultiSelect({ step, onNext }: Props) {
+export default function SurveyMultiSelect({ step, onNext, characterId }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    trackEvent("survey_step_view", { character_id: characterId, step: step.step });
+  }, []);
 
   const toggle = (id: string) => {
     setSelected((prev) =>
@@ -22,6 +28,11 @@ export default function SurveyMultiSelect({ step, onNext }: Props) {
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isValid) return;
+    trackEvent("survey_step_submit", {
+      character_id: characterId,
+      step: step.step,
+      selected_options: selected,
+    });
     onNext(selected);
   };
 

@@ -1,24 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SurveyTextStep } from "@/features/saju/domain/types";
+import { trackEvent } from "@/shared/utils/analytics";
 
 type Props = {
   step: SurveyTextStep;
   onNext: (text: string) => void;
   buttonLabel?: string;
+  characterId?: string;
 };
 
-export default function SurveyFreeText({ step, onNext, buttonLabel = "도윤에게 알려주기 →" }: Props) {
+export default function SurveyFreeText({ step, onNext, buttonLabel = "도윤에게 알려주기 →", characterId }: Props) {
   const [text, setText] = useState("");
+
+  useEffect(() => {
+    trackEvent("survey_step_view", { character_id: characterId, step: 3 });
+  }, []);
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onNext(text.trim());
+    const trimmed = text.trim();
+    trackEvent("survey_freetext_submit", {
+      character_id: characterId,
+      has_text: trimmed.length > 0,
+      text_length: trimmed.length,
+    });
+    onNext(trimmed);
   };
 
   const handleSkip = (e: React.MouseEvent) => {
     e.stopPropagation();
+    trackEvent("survey_freetext_skip", { character_id: characterId });
     onNext("");
   };
 

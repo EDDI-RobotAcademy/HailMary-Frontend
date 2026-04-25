@@ -140,6 +140,7 @@ export default function DoyoonSajuScene() {
         <InfoForm
           onSubmit={(info) => { submitInfo(info); goToCut(cutIndex + 1); }}
           buttonLabel="도윤에게 알려주기 →"
+          characterId="doyoon"
         />
       )}
 
@@ -148,6 +149,7 @@ export default function DoyoonSajuScene() {
         <SurveyCut
           step={1}
           config={SURVEY_STEPS[1]}
+          characterId="doyoon"
           onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step1: answers }));
             goToCut(cutIndex + 1);
@@ -160,6 +162,7 @@ export default function DoyoonSajuScene() {
         <SurveyCut
           step={2}
           config={SURVEY_STEPS[2]}
+          characterId="doyoon"
           onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step2: answers }));
             goToCut(cutIndex + 1);
@@ -172,6 +175,7 @@ export default function DoyoonSajuScene() {
         <SurveyCut
           step={3}
           config={SURVEY_STEPS[3]}
+          characterId="doyoon"
           onAnswer={(text) => {
             finalizeSurvey({ ...surveyAnswers, step3: text });
             goToCut(cutIndex + 1);

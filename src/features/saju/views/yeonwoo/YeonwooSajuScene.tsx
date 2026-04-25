@@ -143,6 +143,7 @@ export default function YeonwooSajuScene() {
         <InfoForm
           onSubmit={(info) => { submitInfo(info); goToCut(cutIndex + 1); }}
           buttonLabel="연우에게 알려주기 →"
+          characterId="yeonwoo"
         />
       )}
 
@@ -151,6 +152,7 @@ export default function YeonwooSajuScene() {
         <SurveyCut
           step={1}
           config={SURVEY_STEPS[1]}
+          characterId="yeonwoo"
           onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step1: answers }));
             goToCut(cutIndex + 1);
@@ -163,6 +165,7 @@ export default function YeonwooSajuScene() {
         <SurveyCut
           step={2}
           config={SURVEY_STEPS[2]}
+          characterId="yeonwoo"
           onAnswer={(answers) => {
             setSurveyAnswers((prev) => ({ ...prev, step2: answers }));
             goToCut(cutIndex + 1);
@@ -176,6 +179,7 @@ export default function YeonwooSajuScene() {
           step={3}
           config={SURVEY_STEPS[3]}
           buttonLabel="연우에게 알려주기 →"
+          characterId="yeonwoo"
           onAnswer={(text) => {
             finalizeSurvey({ ...surveyAnswers, step3: text });
             goToCut(cutIndex + 1);

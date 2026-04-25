@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trackEvent } from "@/shared/utils/analytics";
 
 export type SajuInfo = {
   name: string;
@@ -13,9 +14,14 @@ export type SajuInfo = {
 type Props = {
   onSubmit: (info: SajuInfo) => void;
   buttonLabel?: string;
+  characterId?: string;
 };
 
-export default function InfoForm({ onSubmit, buttonLabel = "도윤에게 알려주기 →" }: Props) {
+export default function InfoForm({ onSubmit, buttonLabel = "도윤에게 알려주기 →", characterId }: Props) {
+  useEffect(() => {
+    trackEvent("info_form_view", { character_id: characterId });
+  }, []);
+
   const [name, setName] = useState("");
   const [birth, setBirth] = useState("");
   const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
@@ -32,6 +38,12 @@ export default function InfoForm({ onSubmit, buttonLabel = "도윤에게 알려�
   const handleSubmit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isValid || !gender) return;
+    trackEvent("info_form_submit", {
+      character_id: characterId,
+      gender,
+      calendar,
+      has_birth_time: !unknownTime,
+    });
     onSubmit({ name: name.trim(), birth, calendar, time: unknownTime ? "unknown" : time, gender });
   };
 
