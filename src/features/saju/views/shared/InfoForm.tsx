@@ -41,6 +41,8 @@ export default function InfoForm({ onSubmit, buttonLabel = "도윤에게 알려�
     trackEvent("info_form_submit", {
       character_id: characterId,
       gender,
+      birth_year: birth.slice(0, 4),
+      birth_month: birth.slice(5, 7),
       calendar,
       has_birth_time: !unknownTime,
     });

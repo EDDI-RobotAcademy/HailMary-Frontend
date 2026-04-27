@@ -93,6 +93,14 @@ export function useIntroScene() {
     }
   }, [stepIndex]);
 
+  // 씬 진입 시점에 scenario_progress 발화
+  useEffect(() => {
+    trackEvent("scenario_progress", {
+      chapter_index: stepIndex,
+      scene_label: `${stepIndex + 1}/${STEPS.length}`,
+    });
+  }, [stepIndex]);
+
   // sfx-dialogue: 스텝 진입 시 효과음 재생
   useEffect(() => {
     if (!started) return;
@@ -236,23 +244,13 @@ export function useIntroScene() {
       setDisplayedCount(0);
       setIsComplete(false);
     } else {
-      trackEvent("intro_step_complete", { step: stepIndex });
-      trackEvent("scenario_progress", { chapter_index: stepIndex });
       goToStep(stepIndex + 1);
     }
   };
 
   const handleVideoEnd = () => { goToStep(stepIndex + 1); };
-  const handleDoorClick = () => {
-    trackEvent("intro_step_complete", { step: stepIndex });
-    trackEvent("scenario_progress", { chapter_index: stepIndex });
-    goToStep(stepIndex + 1);
-  };
-  const handleButtonClick = () => {
-    trackEvent("intro_step_complete", { step: stepIndex });
-    trackEvent("scenario_progress", { chapter_index: stepIndex });
-    goToStep(stepIndex + 1);
-  };
+  const handleDoorClick = () => { goToStep(stepIndex + 1); };
+  const handleButtonClick = () => { goToStep(stepIndex + 1); };
 
   // 개발용 씬 점프 — 전환 효과 없이 바로 이동
   const jumpToStep = (delta: -1 | 1) => (e: MouseEvent) => {

@@ -43,6 +43,7 @@ export default function DoyoonSajuScene() {
       character_id: "doyoon",
       cut_index: cutIndex,
       cut_type: cut.type,
+      scene_label: `${cutIndex + 1}/${DOYOON_CUTS.length}`,
     });
   }, [cutIndex]);
 

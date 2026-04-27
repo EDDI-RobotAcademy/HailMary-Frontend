@@ -21,11 +21,13 @@
 //
 // =============================================================================
 
-// ▼ DA팀 SDK 설치 후 아래 declare 블록 삭제하고 SDK import로 교체
-declare const amplitude:
-  | { track: (name: string, props?: Record<string, unknown>) => void }
-  | undefined;
-// ▲ 삭제 대상
+import * as amplitude from "@amplitude/analytics-browser";
+
+export function initAmplitude(): void {
+  const apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
+  if (!apiKey) return;
+  amplitude.init(apiKey, { defaultTracking: false });
+}
 
 export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -61,9 +63,7 @@ export function trackEvent(
   };
 
   // ▼ DA팀: SDK 연결 후 이 블록은 그대로 유지 (amplitude import만 변경)
-  if (typeof amplitude !== "undefined") {
-    amplitude.track(eventName, payload);
-  }
+  amplitude.track(eventName, payload);
   // ▲ 유지
 
   if (process.env.NODE_ENV === "development") {

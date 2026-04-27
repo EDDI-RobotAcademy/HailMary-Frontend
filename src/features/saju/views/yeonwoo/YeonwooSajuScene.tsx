@@ -43,6 +43,7 @@ export default function YeonwooSajuScene() {
       character_id: "yeonwoo",
       cut_index: cutIndex,
       cut_type: cut.type,
+      scene_label: `${cutIndex + 1}/${YEONWOO_CUTS.length}`,
     });
   }, [cutIndex]);
 
