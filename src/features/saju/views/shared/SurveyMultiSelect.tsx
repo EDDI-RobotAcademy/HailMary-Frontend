@@ -32,6 +32,7 @@ export default function SurveyMultiSelect({ step, onNext, characterId }: Props) 
       character_id: characterId,
       step: step.step,
       selected_options: selected,
+      selected_labels: step.options.filter((o) => selected.includes(o.id)).map((o) => o.label),
     });
     onNext(selected);
   };

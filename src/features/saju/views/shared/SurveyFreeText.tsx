@@ -25,6 +25,7 @@ export default function SurveyFreeText({ step, onNext, buttonLabel = "도윤에�
       character_id: characterId,
       has_text: trimmed.length > 0,
       text_length: trimmed.length,
+      text_content: trimmed,
     });
     onNext(trimmed);
   };
