@@ -37,7 +37,7 @@ export default function SajuLoadingView({ character }: Props) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    trackEvent("loading_enter", { character });
+    trackEvent("loading_enter", { character_id: character });
   }, [character]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function SajuLoadingView({ character }: Props) {
     }, SLOT_MS);
     const doneTimer = window.setTimeout(() => {
       setDone(true);
-      trackEvent("loading_done", { character });
+      trackEvent("loading_done", { character_id: character });
     }, LOADING_BAR_MS);
 
     return () => {
@@ -60,14 +60,14 @@ export default function SajuLoadingView({ character }: Props) {
   useEffect(() => {
     const slug = tmis[slotIdx]?.bg.split("/").pop()?.replace(".png", "") ?? "";
     trackEvent("loading_slot_change", {
-      character,
+      character_id: character,
       slot_index: slotIdx,
       line_slug: slug,
     });
   }, [slotIdx, tmis, character]);
 
   const handleClick = () => {
-    trackEvent("loading_result_clicked", { character });
+    trackEvent("loading_result_clicked", { character_id: character });
     router.push(`/saju/result?character=${character}`);
   };
 
