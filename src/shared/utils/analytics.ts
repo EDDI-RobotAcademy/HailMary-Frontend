@@ -70,3 +70,26 @@ export function trackEvent(
     console.log("[Analytics]", eventName, payload);
   }
 }
+
+/**
+ * Amplitude user property 설정.
+ * 한 번 호출하면 같은 device_id의 후속 모든 이벤트에 자동 첨부된다.
+ * info_form_submit 시점에 호출하여 결제/스크롤 등 후속 이벤트의 세그먼트 분석을
+ * 가능하게 함.
+ */
+export function setUserProperties(
+  properties: Record<string, unknown>
+): void {
+  if (typeof window === "undefined") return;
+
+  const identify = new amplitude.Identify();
+  Object.entries(properties).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    identify.set(key, value as string | number | boolean);
+  });
+  amplitude.identify(identify);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[Analytics] setUserProperties", properties);
+  }
+}

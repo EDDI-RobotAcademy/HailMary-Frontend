@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/shared/utils/analytics";
 import { useDoyoonSajuData } from "../../hooks/useDoyoonSajuData";
 import { useFirstName } from "../../hooks/useFirstName";
 import {
@@ -45,6 +46,7 @@ import StickyCheckoutCta from "../shared/StickyCheckoutCta";
 import { DOYOON_REVIEWS } from "./reviews-doyoon";
 
 const SURFACE = "#FDF5EA";
+const SCROLL_DEPTH_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
 
 export default function DoyoonResultScene() {
   const data = useDoyoonSajuData();
@@ -53,6 +55,11 @@ export default function DoyoonResultScene() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [showCta, setShowCta] = useState(false);
+  const reachedDepthsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    trackEvent("result_page_view", { character_id: "doyoon" });
+  }, []);
 
   const charmCopies: CharmCopyPool = useMemo(
     () => ({
@@ -90,7 +97,19 @@ export default function DoyoonResultScene() {
     };
 
     const handleScroll = () => {
-      setShowCta(measureProgress() >= 0.4);
+      const progress = measureProgress();
+      setShowCta(progress >= 0.4);
+
+      const percent = progress * 100;
+      for (const milestone of SCROLL_DEPTH_MILESTONES) {
+        if (percent >= milestone && !reachedDepthsRef.current.has(milestone)) {
+          reachedDepthsRef.current.add(milestone);
+          trackEvent("result_scroll_depth", {
+            character_id: "doyoon",
+            depth_percent: milestone,
+          });
+        }
+      }
     };
 
     el?.addEventListener("scroll", handleScroll, { passive: true });
@@ -171,6 +190,7 @@ export default function DoyoonResultScene() {
       </div>
       <StickyCheckoutCta
         ctaLabel="결제하고 한도윤의 정밀 리포트 읽기"
+        characterId="doyoon"
         visible={showCta}
       />
     </>
