@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/shared/utils/analytics";
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
@@ -68,6 +69,10 @@ export function StickyCheckoutCta() {
           gap: "10px",
         }}
         onClick={() => {
+          trackEvent("paid_report_cta_clicked", {
+            character_id: "yeonwoo",
+            cta_position: "sticky",
+          });
           alert("결제 페이지는 준비 중이에요.");
         }}
       >

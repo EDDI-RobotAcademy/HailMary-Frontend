@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { trackEvent } from "@/shared/utils/analytics";
+import { trackEvent, setUserProperties } from "@/shared/utils/analytics";
 
 export type SajuInfo = {
   name: string;
@@ -38,11 +38,22 @@ export default function InfoForm({ onSubmit, buttonLabel = "도윤에게 알려�
   const handleSubmit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isValid || !gender) return;
+    const birthYear = birth.slice(0, 4);
+    const birthMonth = birth.slice(5, 7);
     trackEvent("info_form_submit", {
       character_id: characterId,
       gender,
-      birth_year: birth.slice(0, 4),
-      birth_month: birth.slice(5, 7),
+      birth_year: birthYear,
+      birth_month: birthMonth,
+      calendar,
+      has_birth_time: !unknownTime,
+    });
+    // 후속 이벤트(스크롤/결제 등)에 자동 첨부되도록 user property로 등록.
+    setUserProperties({
+      character_id: characterId,
+      gender,
+      birth_year: birthYear,
+      birth_month: birthMonth,
       calendar,
       has_birth_time: !unknownTime,
     });

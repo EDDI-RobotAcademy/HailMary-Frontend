@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/shared/utils/analytics";
 
 const PRIMARY_COLOR = "#E94E3F";
 const TEXT_COLOR = "#2a1f15";
@@ -19,12 +20,14 @@ function formatHMSD(totalMs: number): string {
 
 type Props = {
   ctaLabel: string;
+  characterId: "doyoon" | "yeonwoo";
   visible?: boolean;
   onCheckout?: () => void;
 };
 
 export default function StickyCheckoutCta({
   ctaLabel,
+  characterId,
   visible = true,
   onCheckout,
 }: Props) {
@@ -84,6 +87,10 @@ export default function StickyCheckoutCta({
           boxShadow: "0 6px 18px rgba(233,78,63,0.28)",
         }}
         onClick={() => {
+          trackEvent("paid_report_cta_clicked", {
+            character_id: characterId,
+            cta_position: "sticky",
+          });
           if (onCheckout) {
             onCheckout();
           } else {
