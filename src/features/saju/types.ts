@@ -81,8 +81,10 @@ export interface DaeUn {
 
 // 백엔드 /api/saju/free 응답 (sajuData는 FortuneTeller raw 출력).
 // charm/blocking/spouseAvoid/spouseMatch/monthlyRomanceFlow는 최상위 분석 필드.
+// sessionToken: 보호된 엔드포인트(/api/saju/survey 등) 호출 시 Authorization 헤더로 사용.
+//   기존에는 sequential int sajuRequestId를 쓰던 자리. 이제 32+자 무작위 토큰.
 export interface SajuFreeResponse {
-  sajuRequestId: number | string;
+  sessionToken: string;
   // FortuneTeller raw output (pillars 등은 sajuData 안에 중첩 or 없을 수 있음)
   sajuData?: {
     pillars?: Pillar[];
@@ -108,8 +110,8 @@ export interface SajuFreeResponse {
   monthlyRomanceFlow?: import("@/features/saju-result/domain/types").MonthlyRomanceFlowView;
 }
 
+// 인증은 Authorization: Bearer <sessionToken> 헤더로 전달됨. body에는 사용자 식별자 없음.
 export interface SajuSurveyRequest {
-  sajuRequestId: string;
   surveyVersion: "v1";
   step1: string[];
   step2: string[];
@@ -117,7 +119,7 @@ export interface SajuSurveyRequest {
 }
 
 export type SajuErrorCode =
-  | "BAD_REQUEST" | "CALCULATION_FAILED" | "TIMEOUT" | "NETWORK" | "UNKNOWN";
+  | "BAD_REQUEST" | "UNAUTHORIZED" | "CALCULATION_FAILED" | "TIMEOUT" | "NETWORK" | "UNKNOWN";
 
 export interface SajuError {
   code: SajuErrorCode;
