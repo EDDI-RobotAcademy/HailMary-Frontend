@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { tokenStore } from "@/lib/tokenStore";
 import type { SajuError, SajuFreeRequest, SajuFreeResponse, SajuSurveyRequest } from "./types";
 
 const FIELD_MESSAGE: Record<string, string> = {
@@ -35,7 +36,10 @@ export async function postSajuFree(
 ): Promise<{ ok: true; data: SajuFreeResponse } | { ok: false; error: SajuError }> {
   const res = await api.post<SajuFreeResponse>("/api/saju/free", req);
 
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    if (res.data?.sessionToken) tokenStore.set(res.data.sessionToken);
+    return { ok: true, data: res.data };
+  }
 
   switch (res.error) {
     case "BAD_REQUEST":
@@ -60,7 +64,12 @@ export async function postSajuSurvey(
     ok: false,
     error: {
       code: res.error,
-      message: res.error === "BAD_REQUEST" ? "설문 형식을 확인해 주세요." : "설문 저장에 실패했어요.",
+      message:
+        res.error === "BAD_REQUEST"
+          ? "설문 형식을 확인해 주세요."
+          : res.error === "UNAUTHORIZED"
+            ? "세션이 만료되었어요. 사주 입력부터 다시 시작해 주세요."
+            : "설문 저장에 실패했어요.",
     },
   };
 }

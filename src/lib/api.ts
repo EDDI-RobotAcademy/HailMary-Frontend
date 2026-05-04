@@ -1,7 +1,9 @@
 import { env } from "./env";
+import { tokenStore } from "./tokenStore";
 
 export type ApiErrorCode =
   | "BAD_REQUEST"
+  | "UNAUTHORIZED"
   | "CALCULATION_FAILED"
   | "TIMEOUT"
   | "NETWORK"
@@ -13,6 +15,20 @@ export type ApiResult<T> =
 
 const TIMEOUT_MS = 5000;
 
+function buildHeaders(extra?: HeadersInit): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (extra) {
+    new Headers(extra).forEach((v, k) => {
+      headers[k] = v;
+    });
+  }
+  const token = tokenStore.get();
+  if (token && !("Authorization" in headers) && !("authorization" in headers)) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -23,6 +39,7 @@ async function request<T>(
   try {
     const res = await fetch(`${env.API_URL}${path}`, {
       ...init,
+      headers: buildHeaders(init?.headers),
       signal: ctrl.signal,
     });
 
@@ -32,6 +49,9 @@ async function request<T>(
 
     if (res.status === 400) {
       return { ok: false, error: "BAD_REQUEST", detail: body?.detail ?? body, status: 400 };
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, error: "UNAUTHORIZED", detail: body, status: res.status };
     }
     if (res.status >= 500) {
       return { ok: false, error: "CALCULATION_FAILED", detail: body, status: res.status };

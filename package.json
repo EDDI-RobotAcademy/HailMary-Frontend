@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/optimize-images.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "optimize:images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.41.1",
