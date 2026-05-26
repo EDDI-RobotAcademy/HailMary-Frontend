@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useIntroScene } from "../hooks/useIntroScene";
 import { STEPS } from "../domain/introSteps";
+import { trackEvent } from "@/shared/utils/analytics";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import { SceneProgressBar } from "@/components/SceneProgressBar";
 import { FadeOverlay } from "@/components/FadeOverlay";
@@ -75,8 +76,22 @@ export function IntroScene() {
               ? <DialogueCut step={step} displayedText={displayedText} isComplete={isComplete}
                   muted={muted} showSoundHint={false} fading={fading}
                   crossFading={crossFading} flashWhite={flashWhite} onToggleMute={toggleMute}
-                  onGoHome={(e) => { e.stopPropagation(); setPendingNav("home"); }}
-                  onSkip={(e) => { e.stopPropagation(); setPendingNav("skip"); }} />
+                  onGoHome={(e) => {
+                    e.stopPropagation();
+                    trackEvent("intro_home_click", {
+                      chapter_index: stepIndex,
+                      scene_label: `${stepIndex + 1}/${STEPS.length}`,
+                    });
+                    setPendingNav("home");
+                  }}
+                  onSkip={(e) => {
+                    e.stopPropagation();
+                    trackEvent("intro_skip_click", {
+                      chapter_index: stepIndex,
+                      scene_label: `${stepIndex + 1}/${STEPS.length}`,
+                    });
+                    setPendingNav("skip");
+                  }} />
               : null;
           case "button":
             return <ButtonCut step={step} bgImage={bgImage} fading={fading} onNext={handleButtonClick} />;
@@ -103,11 +118,31 @@ export function IntroScene() {
         cancelLabel="취소"
         onConfirm={() => {
           if (!pendingNav) return;
+          trackEvent(
+            pendingNav === "home" ? "intro_home_confirm" : "intro_skip_confirm",
+            {
+              chapter_index: stepIndex,
+              scene_label: `${stepIndex + 1}/${STEPS.length}`,
+              action: "confirm",
+            },
+          );
           const href = NAV_PROMPT[pendingNav].href;
           setPendingNav(null);
           router.push(href);
         }}
-        onCancel={() => setPendingNav(null)}
+        onCancel={() => {
+          if (pendingNav) {
+            trackEvent(
+              pendingNav === "home" ? "intro_home_confirm" : "intro_skip_confirm",
+              {
+                chapter_index: stepIndex,
+                scene_label: `${stepIndex + 1}/${STEPS.length}`,
+                action: "cancel",
+              },
+            );
+          }
+          setPendingNav(null);
+        }}
       />
     </div>
   );
