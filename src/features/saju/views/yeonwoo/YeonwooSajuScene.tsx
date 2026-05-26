@@ -132,14 +132,30 @@ export default function YeonwooSajuScene() {
             <div className="-mb-5 flex justify-end gap-2">
               <NavIconButton
                 label="메인으로"
-                onClick={(e) => { e.stopPropagation(); setPendingNav("home"); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("storycutview_home_click", {
+                    character_id: "yeonwoo",
+                    cut_index: cutIndex,
+                    scene_label: `${cutIndex + 1}/${YEONWOO_CUTS.length}`,
+                  });
+                  setPendingNav("home");
+                }}
                 tooltipPlacement="top"
               >
                 <HomeIcon />
               </NavIconButton>
               <NavIconButton
                 label="상담사 변경"
-                onClick={(e) => { e.stopPropagation(); setPendingNav("consultant"); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("storycutview_character_click", {
+                    character_id: "yeonwoo",
+                    cut_index: cutIndex,
+                    scene_label: `${cutIndex + 1}/${YEONWOO_CUTS.length}`,
+                  });
+                  setPendingNav("consultant");
+                }}
                 tooltipPlacement="top"
               >
                 <UsersIcon />
@@ -228,11 +244,33 @@ export default function YeonwooSajuScene() {
         cancelLabel="취소"
         onConfirm={() => {
           if (!pendingNav) return;
+          trackEvent(
+            pendingNav === "home" ? "storycutview_home_confirm" : "storycutview_character_confirm",
+            {
+              character_id: "yeonwoo",
+              cut_index: cutIndex,
+              scene_label: `${cutIndex + 1}/${YEONWOO_CUTS.length}`,
+              action: "confirm",
+            },
+          );
           const href = NAV_PROMPT[pendingNav].href;
           setPendingNav(null);
           router.push(href);
         }}
-        onCancel={() => setPendingNav(null)}
+        onCancel={() => {
+          if (pendingNav) {
+            trackEvent(
+              pendingNav === "home" ? "storycutview_home_confirm" : "storycutview_character_confirm",
+              {
+                character_id: "yeonwoo",
+                cut_index: cutIndex,
+                scene_label: `${cutIndex + 1}/${YEONWOO_CUTS.length}`,
+                action: "cancel",
+              },
+            );
+          }
+          setPendingNav(null);
+        }}
       />
     </div>
   );
