@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/shared/utils/analytics";
 import PageHead from "../components/PageHead";
 import { Sec } from "../components/Section";
 
@@ -33,6 +34,10 @@ export default function EpiloguePage() {
   const handleClosingCta = () => {
     // dev/full 등 orderId가 없는 환경에서는 placeholder로 fallback
     const orderId = extractOrderIdFromUrl() || "test-order-id";
+    trackEvent("paidclosing_enter_click", {
+      character_id: "yeonwoo",
+      order_id: orderId,
+    });
     router.push(`/saju/paid/${encodeURIComponent(orderId)}/closing`);
   };
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/shared/utils/analytics";
 import type { PaidChapterP11Doyoon } from "../../../../domain/paidReport";
 import { DoyoonPageHead } from "../components/DoyoonPageHead";
 import {
@@ -39,6 +40,10 @@ export default function DoyoonEpiloguePage({ data, userName }: DoyoonEpiloguePag
 
   const handleClosingCta = () => {
     const orderId = extractOrderIdFromUrl() || "test-order-id";
+    trackEvent("paidclosing_enter_click", {
+      character_id: "doyoon",
+      order_id: orderId,
+    });
     router.push(`/saju/paid/${encodeURIComponent(orderId)}/closing-doyoon`);
   };
 
