@@ -1,11 +1,17 @@
 "use client";
 
-// 유료 결과 p0 진입 시 1회만 Amplitude identify + setUserId 호출.
+// 유료 결과 p0 진입 시 1회만 Amplitude identify 호출.
 // 백엔드 PaidReportResponse.user (PII 가공값) 가 단일 입력 소스.
 // 응답 snake_case 그대로 전송 (Amplitude property key 도 snake_case 권장).
+//
+// ⚠️ setUserId 호출 금지 (HMDA-46 후속): DB users.id는 사주 1회 제출마다 새로 생겨
+// 사람 단위 고정 식별자가 아니다. 이 값을 Amplitude user_id로 심으면(usr_607→usr_609)
+// 같은 device의 흐름이 별개 유저로 분리된다. 익명 유저의 단일 식별자는 device_id —
+// user_id는 로그인 계정(accounts.id) 같은 사람 단위 고정값이 생길 때만 설정한다.
+// DB 조인용 users.id는 user property `user_db_id`로만 보존.
 
 import { useEffect, useRef } from "react";
-import { setUserId, setUserProperties } from "@/shared/utils/analytics";
+import { setUserProperties } from "@/shared/utils/analytics";
 
 export interface PaidUserProperties {
   user_id: string;
@@ -32,8 +38,8 @@ export function usePaidUserPropertiesSync({ user, active }: Args): void {
     if (!user) return;
     if (syncedRef.current === user.user_id) return;
 
-    setUserId(user.user_id);
     setUserProperties({
+      user_db_id: user.user_id,
       user_nickname: user.user_nickname,
       user_name_initial: user.user_name_initial,
       user_email_domain: user.user_email_domain,
