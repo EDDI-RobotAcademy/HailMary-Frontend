@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isValidEmail } from "@/shared/utils/validation";
-import { trackEvent } from "@/shared/utils/analytics";
+import { getDeviceId, getSessionId, trackEvent } from "@/shared/utils/analytics";
 import { api } from "@/shared/utils/api";
 import {
   PRODUCTS,
@@ -69,6 +69,15 @@ export interface UseCheckoutReturn {
   handleSubmit: () => Promise<void>;
   /** staging/local 전용: 결제 단계 스킵 → BE bypass → success polling. */
   devBypassPay: () => Promise<void>;
+}
+
+// BE 결제 요청 3종(request/redeem/bypass)에 Amplitude 식별자를 동봉 — BE가 Payment에
+// 저장해뒀다가 webhook 발화 payment_completed에 그대로 실어, FE 퍼널과 유저가 이어진다.
+// (식별자 누락 시 payment_completed가 user_id 단독의 "고아 유저"로 분리되던 문제의 FE측 수정)
+function getAnalyticsIds(): { deviceId: string | null; sessionId: number | null } {
+  const deviceId = getDeviceId() || null;
+  const sid = getSessionId();
+  return { deviceId, sessionId: sid ? Number(sid) : null };
 }
 
 function scrollToField(id: string): void {
@@ -267,6 +276,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
             character,
             customerEmail: email.trim(),
             code: coupon.trim(),
+            ...getAnalyticsIds(),
           },
           // 로그인 시 계정 JWT 첨부 → 결제 보관함 귀속 (비로그인은 무영향)
           { auth: "account" },
@@ -307,6 +317,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
           sessionToken,
           character,
           customerEmail: email.trim(),
+          ...getAnalyticsIds(),
         },
         // 로그인 시 계정 JWT 첨부 → 결제 보관함 귀속 (비로그인은 무영향)
         { auth: "account" },
@@ -361,6 +372,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
           sessionToken,
           character,
           customerEmail: email.trim(),
+          ...getAnalyticsIds(),
         },
         // 로그인 시 계정 JWT 첨부 → 결제 보관함 귀속 (비로그인은 무영향)
         { auth: "account" },
