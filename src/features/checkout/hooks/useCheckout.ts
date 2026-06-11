@@ -75,9 +75,13 @@ export interface UseCheckoutReturn {
 // 저장해뒀다가 webhook 발화 payment_completed에 그대로 실어, FE 퍼널과 유저가 이어진다.
 // (식별자 누락 시 payment_completed가 user_id 단독의 "고아 유저"로 분리되던 문제의 FE측 수정)
 function getAnalyticsIds(): { deviceId: string | null; sessionId: number | null } {
-  const deviceId = getDeviceId() || null;
-  const sid = getSessionId();
-  return { deviceId, sessionId: sid ? Number(sid) : null };
+  // BE device_id 컬럼은 String(64) — 초과 값(크래프트된 ?ampDeviceId 링크 등)은 절단해
+  // 결제 요청이 1406으로 500나지 않게 한다. session_id도 안전한 양의 정수만 통과.
+  const rawDeviceId = getDeviceId();
+  const deviceId = rawDeviceId ? rawDeviceId.slice(0, 64) : null;
+  const n = Number(getSessionId());
+  const sessionId = Number.isSafeInteger(n) && n > 0 ? n : null;
+  return { deviceId, sessionId };
 }
 
 function scrollToField(id: string): void {
