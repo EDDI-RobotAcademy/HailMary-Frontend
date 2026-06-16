@@ -28,6 +28,7 @@ export function CheckoutView({ character }: CheckoutViewProps) {
     setCoupon,
     handleCouponBlur,
     couponApplied,
+    isTestAccount,
     couponMessage,
     couponChecking,
     agreeDataUsage,
@@ -64,6 +65,19 @@ export function CheckoutView({ character }: CheckoutViewProps) {
       <CheckoutHeader onBack={handleBack} />
 
       <main className="flex-1 space-y-6 px-6 py-8">
+        {/* 카드사 심사용 테스트 계정 안내 — 결제 없이 0원으로 유료 결과가 발급됨을 미리 알림. */}
+        {isTestAccount && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-[13px] font-semibold text-emerald-700">
+              테스트 계정으로 로그인됨
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-emerald-600">
+              실제 결제 없이 유료 사주 결과를 무료로 확인할 수 있어요. 최종
+              결제금액은 0원이며, 아래 버튼을 누르면 바로 결과가 발급됩니다.
+            </p>
+          </div>
+        )}
+
         <EmailField
           value={email}
           onChange={setEmail}
@@ -73,17 +87,24 @@ export function CheckoutView({ character }: CheckoutViewProps) {
 
         <hr className="border-white/[0.06]" />
 
-        <PriceSummary product={product} freeWithCoupon={couponApplied} />
-
-        <CouponField
-          value={coupon}
-          onChange={setCoupon}
-          onBlur={handleCouponBlur}
-          onApply={applyCoupon}
-          applied={couponApplied}
-          message={couponMessage}
-          checking={couponChecking}
+        <PriceSummary
+          product={product}
+          freeWithCoupon={couponApplied}
+          testFree={isTestAccount}
         />
+
+        {/* 테스트 계정은 쿠폰이 무의미 — 혼동 방지 위해 쿠폰 입력 숨김. */}
+        {!isTestAccount && (
+          <CouponField
+            value={coupon}
+            onChange={setCoupon}
+            onBlur={handleCouponBlur}
+            onApply={applyCoupon}
+            applied={couponApplied}
+            message={couponMessage}
+            checking={couponChecking}
+          />
+        )}
 
         {/* PayApp 결제: 인페이지 위젯 없음. 결제수단·약관은 PayApp 페이지가 처리.
             우리 페이지의 동의(ConsentRow)는 우리 서비스의 개인정보·결제진행 동의 별도. */}
@@ -92,8 +113,14 @@ export function CheckoutView({ character }: CheckoutViewProps) {
           onSubmit={handleSubmit}
           loading={isProcessing}
           disabled={false}
-          label={couponApplied ? "무료로 받기" : "결제하기"}
-          loadingLabel={couponApplied ? "처리 중…" : undefined}
+          label={
+            isTestAccount
+              ? "테스트 유료 사주 보기"
+              : couponApplied
+                ? "무료로 받기"
+                : "결제하기"
+          }
+          loadingLabel={isTestAccount || couponApplied ? "처리 중…" : undefined}
         />
 
         {/* ⚠️ staging/local 전용 — 운영 도메인에서는 노출 X (isDevBypassEnabled). */}

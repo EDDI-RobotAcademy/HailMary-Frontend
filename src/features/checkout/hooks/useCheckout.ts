@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { isValidEmail } from "@/shared/utils/validation";
 import { getDeviceId, getSessionId, trackEvent } from "@/shared/utils/analytics";
 import { api } from "@/shared/utils/api";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
   PRODUCTS,
   type CheckoutCharacter,
@@ -54,6 +55,8 @@ export interface UseCheckoutReturn {
   handleCouponBlur: () => void;
   /** 쿠폰 검증 통과 여부 — true면 0원 무료 발급 플로로 전환. */
   couponApplied: boolean;
+  /** 카드사 심사용 테스트 계정 로그인 상태 — 결제 0원 + UI 안내 분기. */
+  isTestAccount: boolean;
   /** "적용" 결과 안내 문구 (유효/무효). */
   couponMessage: string | null;
   couponChecking: boolean;
@@ -111,6 +114,9 @@ function savePendingCheckout(payload: {
 export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   const router = useRouter();
   const product = PRODUCTS[character];
+  const { profile } = useAuth();
+  // 테스트 계정(provider=test)으로 로그인 시 → 결제 0원 + 결제 UI를 "테스트" 문구로 전환.
+  const isTestAccount = profile?.provider === "test";
 
   const [email, setEmailState] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -424,6 +430,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     setCoupon,
     handleCouponBlur,
     couponApplied,
+    isTestAccount,
     couponMessage,
     couponChecking,
     agreeDataUsage,
