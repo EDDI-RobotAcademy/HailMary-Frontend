@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { isValidEmail } from "@/shared/utils/validation";
 import { getDeviceId, getSessionId, trackEvent } from "@/shared/utils/analytics";
 import { api } from "@/shared/utils/api";
+import { env } from "@/lib/env";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { makePortoneOrderId, requestPortonePayment } from "./portone";
 import {
   PRODUCTS,
   type CheckoutCharacter,
@@ -57,6 +59,8 @@ export interface UseCheckoutReturn {
   couponApplied: boolean;
   /** 카드사 심사용 테스트 계정 로그인 상태 — 결제 0원 + UI 안내 분기. */
   isTestAccount: boolean;
+  /** 포트원 카카오페이 결제창 사용 여부(테스트계정 한정 또는 전체 개방). true면 결제하기 → 카카오페이. */
+  portoneActive: boolean;
   /** "적용" 결과 안내 문구 (유효/무효). */
   couponMessage: string | null;
   couponChecking: boolean;
@@ -115,8 +119,12 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   const router = useRouter();
   const product = PRODUCTS[character];
   const { profile, refreshMe } = useAuth();
-  // 테스트 계정(provider=test)으로 로그인 시 → 결제 0원 + 결제 UI를 "테스트" 문구로 전환.
+  // 테스트 계정(provider=test)으로 로그인 시 → 결제 UI를 "테스트" 문구로 전환.
   const isTestAccount = profile?.provider === "test";
+  // 포트원 카카오페이 결제창 사용 여부: enabled + (전체개방 OR 테스트계정).
+  // 심사 기간엔 PORTONE_FOR_ALL=false → 테스트 계정에게만 노출, 통과 후 true로 전체 개방.
+  const portoneActive =
+    env.PORTONE_ENABLED && (env.PORTONE_FOR_ALL || Boolean(isTestAccount));
 
   // 새 탭/리로드로 결제 페이지에 바로 진입하면 토큰은 살아있어도 in-memory 프로필이 비어
   // isTestAccount가 false로 떨어진다(0원 발급은 토큰 기반이라 정상이지만 안내 UI가 안 뜸).
@@ -323,6 +331,64 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
       return;
     }
 
+    // 포트원 카카오페이 결제창 — 테스트 계정(심사) 또는 전체 개방 시. PayApp 경로 대신 사용.
+    if (portoneActive) {
+      const orderId = makePortoneOrderId();
+      savePendingCheckout({
+        character,
+        orderId,
+        amount: product.priceKrw,
+        email: email.trim(),
+      });
+      trackEvent("payment_initiated", {
+        character_id: character,
+        saju_request_id: sajuRequestId,
+        amount: product.priceKrw,
+        pg: "portone_kakaopay",
+      });
+      try {
+        const result = await requestPortonePayment({
+          paymentId: orderId,
+          orderName: product.productLabel,
+          totalAmount: product.priceKrw,
+          customData: {
+            character,
+            sessionToken,
+            email: email.trim(),
+            ...getAnalyticsIds(),
+          },
+          // 모바일 redirect 복귀 — order_id 쿼리로 success 폴링이 즉시 식별.
+          redirectUrl: `${window.location.origin}/checkout/success/?order_id=${encodeURIComponent(orderId)}`,
+        });
+        // 모바일은 위에서 페이지 이동 → 여기 도달 안 함. PC 성공 / 결제창 진입 실패만 처리.
+        if (!result.ok) {
+          trackEvent("payment_failed", {
+            character_id: character,
+            error_message: result.message ?? result.code ?? "결제 취소",
+          });
+          setIsProcessing(false);
+          return;
+        }
+        // PC return-value 성공 → 서버 검증(complete) 후 success 진입.
+        await api.post(
+          "/api/payments/portone/complete",
+          { paymentId: orderId },
+          { auth: "account" },
+        );
+        router.replace("/checkout/success");
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "결제를 시작하지 못했어요.";
+        trackEvent("payment_failed", {
+          character_id: character,
+          error_message: message,
+        });
+        alert(`결제를 시작하지 못했어요: ${message}`);
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     trackEvent("payment_initiated", {
       character_id: character,
       saju_request_id: sajuRequestId,
@@ -385,6 +451,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     couponApplied,
     coupon,
     router,
+    portoneActive,
   ]);
 
   /** 결제 패스 (staging/local 전용) — BE bypass endpoint 호출 → success polling. */
@@ -438,6 +505,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     handleCouponBlur,
     couponApplied,
     isTestAccount,
+    portoneActive,
     couponMessage,
     couponChecking,
     agreeDataUsage,

@@ -34,6 +34,11 @@ jobs:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
           # 카드사 심사용 테스트 로그인 버튼 노출 (HM-FE-136). 심사 종료 후 secret=false 재배포로 숨김.
           NEXT_PUBLIC_TEST_LOGIN_ENABLED: ${{ secrets.NEXT_PUBLIC_TEST_LOGIN_ENABLED }}
+          # 포트원 카카오페이 (HM-FE-137). FOR_ALL=false면 테스트 계정만 노출, 통과 후 true로 전체 개방.
+          NEXT_PUBLIC_PORTONE_ENABLED: ${{ secrets.NEXT_PUBLIC_PORTONE_ENABLED }}
+          NEXT_PUBLIC_PORTONE_FOR_ALL: ${{ secrets.NEXT_PUBLIC_PORTONE_FOR_ALL }}
+          NEXT_PUBLIC_PORTONE_STORE_ID: ${{ secrets.NEXT_PUBLIC_PORTONE_STORE_ID }}
+          NEXT_PUBLIC_PORTONE_CHANNEL_KEY: ${{ secrets.NEXT_PUBLIC_PORTONE_CHANNEL_KEY }}
           # 이미지 최적화 콘텐츠 해시 캐시 (HM-FE-104) — self-hosted EC2 영구 경로.
           # 작업 디렉터리(_work) 밖이라 checkout/빌드와 무관하게 persist → 안 바뀐 이미지 sharp 스킵.
           IMAGE_CACHE_DIR: /home/ec2-user/.kkebi-image-cache
