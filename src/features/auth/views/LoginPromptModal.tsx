@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { env } from "@/lib/env";
 import { trackEvent } from "@/shared/utils/analytics";
 import { useAuth } from "../hooks/useAuth";
 import type { AuthProvider } from "../domain/types";
@@ -33,7 +34,14 @@ export function LoginPromptModal({
   title,
   description,
 }: LoginPromptModalProps) {
-  const { startLogin, isAuthenticated } = useAuth();
+  const { startLogin, testLogin, isAuthenticated } = useAuth();
+
+  // 카드사 심사용 테스트 로그인 — 인라인 ID/PW 폼 토글 상태(심사 기간 한정, env 플래그로 노출).
+  const [testFormOpen, setTestFormOpen] = useState(false);
+  const [testUsername, setTestUsername] = useState("");
+  const [testPassword, setTestPassword] = useState("");
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testSubmitting, setTestSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +63,22 @@ export function LoginPromptModal({
   const handleDismiss = () => {
     trackEvent("login_dismiss", { source: source ?? null });
     onClose();
+  };
+
+  const handleTestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (testSubmitting) return;
+    setTestError(null);
+    setTestSubmitting(true);
+    try {
+      await testLogin(testUsername.trim(), testPassword);
+      // 로그인 성공 → 토큰/프로필 저장됨. 팝업 닫고 원래 플로(결제) 계속.
+      onClose();
+    } catch {
+      setTestError("아이디 또는 비밀번호가 올바르지 않습니다.");
+    } finally {
+      setTestSubmitting(false);
+    }
   };
 
   return (
@@ -115,6 +139,50 @@ export function LoginPromptModal({
             </svg>
             Google로 시작하기
           </button>
+
+          {/* 카드사 심사용 테스트 로그인 — env 플래그 ON일 때만 노출. 심사 종료 후 플래그 OFF로 숨김. */}
+          {env.TEST_LOGIN_ENABLED &&
+            (testFormOpen ? (
+              <form
+                onSubmit={handleTestSubmit}
+                className="mt-1 flex flex-col gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3"
+              >
+                <input
+                  type="text"
+                  value={testUsername}
+                  onChange={(e) => setTestUsername(e.target.value)}
+                  placeholder="아이디"
+                  autoComplete="username"
+                  className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-[13px] text-neutral-800 outline-none focus:border-neutral-500"
+                />
+                <input
+                  type="password"
+                  value={testPassword}
+                  onChange={(e) => setTestPassword(e.target.value)}
+                  placeholder="비밀번호"
+                  autoComplete="current-password"
+                  className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-[13px] text-neutral-800 outline-none focus:border-neutral-500"
+                />
+                {testError && (
+                  <p className="text-[12px] text-red-500">{testError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={testSubmitting}
+                  className="flex h-10 w-full cursor-pointer items-center justify-center rounded-lg bg-neutral-800 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {testSubmitting ? "확인 중…" : "테스트 계정으로 로그인"}
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setTestFormOpen(true)}
+                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white text-[14px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+              >
+                테스트 계정으로 시작하기
+              </button>
+            ))}
 
           <button
             type="button"

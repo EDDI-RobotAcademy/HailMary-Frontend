@@ -16,6 +16,8 @@ export type ConsentDoc = "data-usage" | "payment";
 interface RequestPaymentResponse {
   orderId: string;
   payurl: string;
+  // 카드사 심사용 테스트 계정이면 BE가 0원 무료 발급 → payurl 빈 문자열 + freeGranted=true.
+  freeGranted?: boolean;
 }
 
 interface DevBypassResponse {
@@ -326,6 +328,22 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
         // 로그인 시 계정 JWT 첨부 → 결제 보관함 귀속 (비로그인은 무영향)
         { auth: "account" },
       );
+
+      // 테스트 계정(카드사 심사) → BE가 0원 무료 발급(payurl 없음) → PayApp 스킵, 쿠폰과 동일 success 폴링.
+      if (res.freeGranted || !res.payurl) {
+        savePendingCheckout({
+          character,
+          orderId: res.orderId,
+          amount: 0,
+          email: email.trim(),
+        });
+        trackEvent("payment_free_granted", {
+          character_id: character,
+          order_id: res.orderId,
+        });
+        router.replace("/checkout/success");
+        return;
+      }
 
       savePendingCheckout({
         character,
