@@ -114,9 +114,16 @@ function savePendingCheckout(payload: {
 export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   const router = useRouter();
   const product = PRODUCTS[character];
-  const { profile } = useAuth();
+  const { profile, refreshMe } = useAuth();
   // 테스트 계정(provider=test)으로 로그인 시 → 결제 0원 + 결제 UI를 "테스트" 문구로 전환.
   const isTestAccount = profile?.provider === "test";
+
+  // 새 탭/리로드로 결제 페이지에 바로 진입하면 토큰은 살아있어도 in-memory 프로필이 비어
+  // isTestAccount가 false로 떨어진다(0원 발급은 토큰 기반이라 정상이지만 안내 UI가 안 뜸).
+  // 진입 시 프로필이 없으면 /me로 1회 복원해 provider(test 여부)를 채운다. (토큰 없으면 no-op)
+  useEffect(() => {
+    if (!profile) void refreshMe();
+  }, [profile, refreshMe]);
 
   const [email, setEmailState] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
