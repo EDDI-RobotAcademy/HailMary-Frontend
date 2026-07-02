@@ -136,6 +136,12 @@ export function CheckoutView({ character }: CheckoutViewProps) {
           }
         />
 
+        {/* 서비스 제공기간 명시 — 이용약관 제14조 4항. 카카오페이 입점 심사 요청(2026-07-02):
+            결제 고객이 잘 인지할 수 있는 구좌에 이용기간 추가 표기. */}
+        <p className="text-center text-[12px] text-neutral-500">
+          * 유료 결과물의 이용기간은 결제 완료일로부터 30일까지입니다.
+        </p>
+
         {/* ⚠️ staging/local 전용 — 운영 도메인에서는 노출 X (isDevBypassEnabled). */}
         {devBypass && (
           <button
