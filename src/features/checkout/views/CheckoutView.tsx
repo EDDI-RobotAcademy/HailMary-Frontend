@@ -41,6 +41,7 @@ export function CheckoutView({ character }: CheckoutViewProps) {
     setOpenConsent,
     handleConsentDetail,
     isProcessing,
+    processingMethod,
     applyCoupon,
     handleBack,
     handleSubmit,
@@ -111,14 +112,16 @@ export function CheckoutView({ character }: CheckoutViewProps) {
         ) : kakaopayAvailable ? (
           // 카카오페이(포트원) + PayApp(카드·간편결제) 공존.
           <div className="space-y-2">
+            {/* 눌린 버튼만 로딩, 나머지는 disabled — 두 버튼이 동시에 도는 오해 방지(G). */}
             <KakaoPayButton
               onClick={() => handleSubmit("kakao")}
-              loading={isProcessing}
+              loading={processingMethod === "kakao"}
+              disabled={isProcessing}
             />
             <CheckoutCta
               onSubmit={() => handleSubmit("payapp")}
-              loading={isProcessing}
-              disabled={false}
+              loading={processingMethod === "payapp"}
+              disabled={isProcessing}
               label="카드 · 간편결제"
               loadingLabel="결제창을 여는 중…"
             />

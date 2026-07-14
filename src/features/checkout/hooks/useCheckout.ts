@@ -6,8 +6,13 @@ import { isValidEmail } from "@/shared/utils/validation";
 import { getDeviceId, getSessionId, trackEvent } from "@/shared/utils/analytics";
 import { api } from "@/shared/utils/api";
 import { env } from "@/lib/env";
+import { getAccountIdFromToken } from "@/lib/authAccount";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { makePortoneOrderId, requestPortonePayment } from "./portone";
+import {
+  makePortoneOrderId,
+  requestPortonePayment,
+  type PortonePaymentResult,
+} from "./portone";
 import {
   PRODUCTS,
   type CheckoutCharacter,
@@ -75,6 +80,8 @@ export interface UseCheckoutReturn {
   setOpenConsent: (v: ConsentDoc | null) => void;
   handleConsentDetail: (doc: ConsentDoc) => void;
   isProcessing: boolean;
+  /** 지금 처리 중인 결제수단 — 눌린 버튼만 로딩 표시(다른 버튼은 그대로). */
+  processingMethod: PayMethod | null;
   applyCoupon: () => Promise<void>;
   handleBack: () => void;
   /** 결제 실행. method="kakao"면 포트원 카카오페이, "payapp"면 PayApp. 쿠폰 적용 시 method 무관 무료발급. */
@@ -146,10 +153,16 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   const [agreePayment, setAgreePayment] = useState(true);
   const [openConsent, setOpenConsent] = useState<ConsentDoc | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMethod, setProcessingMethod] = useState<PayMethod | null>(
+    null,
+  );
 
   // PayApp 결제 페이지에서 뒤로가기 복귀 시 isProcessing reset.
   useEffect(() => {
-    const reset = () => setIsProcessing(false);
+    const reset = () => {
+      setIsProcessing(false);
+      setProcessingMethod(null);
+    };
     window.addEventListener("pageshow", reset);
     window.addEventListener("focus", reset);
     return () => {
@@ -290,6 +303,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     }
     if (isProcessing) return;
     setIsProcessing(true);
+    setProcessingMethod(method);
 
     const sajuRequestId =
       typeof window !== "undefined"
@@ -331,12 +345,20 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
         });
         alert(`쿠폰 사용에 실패했어요: ${message}`);
         setIsProcessing(false);
+        setProcessingMethod(null);
       }
       return;
     }
 
-    // 카카오페이(포트원) 선택 시 — 결제창 호출. (버튼은 kakaopayAvailable일 때만 노출)
-    if (method === "kakao") {
+    // 카카오페이(포트원) — 테스트계정은 제외(0원 free 경로로 흘림, F). 버튼은 kakaopayAvailable일 때만.
+    if (method === "kakao" && !isTestAccount) {
+      // B: 사주 세션 없으면 결제창 열기 '전'에 차단 — 결제 후 발급 불가로 돈만 나가는 것 방지.
+      if (!sessionToken) {
+        alert("세션이 만료됐어요. 처음부터 다시 시도해 주세요.");
+        setIsProcessing(false);
+        setProcessingMethod(null);
+        return;
+      }
       const orderId = makePortoneOrderId();
       savePendingCheckout({
         character,
@@ -350,8 +372,11 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
         amount: product.priceKrw,
         pg: "portone_kakaopay",
       });
+
+      // 결제창 호출 — 여기서 throw = 결제 '시작' 실패(돈 안 나감) → 안내 후 재시도 허용.
+      let result: PortonePaymentResult;
       try {
-        const result = await requestPortonePayment({
+        result = await requestPortonePayment({
           paymentId: orderId,
           orderName: product.productLabel,
           totalAmount: product.priceKrw,
@@ -359,27 +384,12 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
             character,
             sessionToken,
             email: email.trim(),
+            accountId: getAccountIdFromToken(), // E: 웹훅 경로에서도 계정 귀속(보관함)
             ...getAnalyticsIds(),
           },
-          // 모바일 redirect 복귀 — order_id 쿼리로 success 폴링이 즉시 식별.
-          redirectUrl: `${window.location.origin}/checkout/success/?order_id=${encodeURIComponent(orderId)}`,
+          // H: 쿼리 없이 — 포트원이 ?paymentId= 를 부착, success 페이지가 그것으로 식별.
+          redirectUrl: `${window.location.origin}/checkout/success/`,
         });
-        // 모바일은 위에서 페이지 이동 → 여기 도달 안 함. PC 성공 / 결제창 진입 실패만 처리.
-        if (!result.ok) {
-          trackEvent("payment_failed", {
-            character_id: character,
-            error_message: result.message ?? result.code ?? "결제 취소",
-          });
-          setIsProcessing(false);
-          return;
-        }
-        // PC return-value 성공 → 서버 검증(complete) 후 success 진입.
-        await api.post(
-          "/api/payments/portone/complete",
-          { paymentId: orderId },
-          { auth: "account" },
-        );
-        router.replace("/checkout/success");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "결제를 시작하지 못했어요.";
@@ -389,7 +399,36 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
         });
         alert(`결제를 시작하지 못했어요: ${message}`);
         setIsProcessing(false);
+        setProcessingMethod(null);
+        return;
       }
+
+      // 모바일은 위에서 페이지 이동 → 여기 도달 안 함. PC return-value만 처리.
+      if (!result.ok) {
+        // 결제 취소/실패(돈 안 나감).
+        trackEvent("payment_failed", {
+          character_id: character,
+          error_message: result.message ?? result.code ?? "결제 취소",
+        });
+        setIsProcessing(false);
+        setProcessingMethod(null);
+        return;
+      }
+
+      // A: 결제 성공(돈 나감) → complete는 best-effort. 실패해도 success로 보낸다
+      // (웹훅 + status 폴링이 발급 마무리). "결제 시작 실패" alert/재시도 금지 = 이중결제 방지.
+      try {
+        await api.post(
+          "/api/payments/portone/complete",
+          { paymentId: orderId },
+          { auth: "account" },
+        );
+      } catch {
+        // 무시 — 웹훅 백업 + success 폴링이 발급을 마무리한다.
+      }
+      router.replace(
+        `/checkout/success/?order_id=${encodeURIComponent(orderId)}`,
+      );
       return;
     }
 
@@ -444,6 +483,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
       });
       alert(`결제를 시작하지 못했어요: ${message}`);
       setIsProcessing(false);
+      setProcessingMethod(null);
     }
   }, [
     email,
@@ -455,6 +495,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     couponApplied,
     coupon,
     router,
+    isTestAccount,
   ]);
 
   /** 결제 패스 (staging/local 전용) — BE bypass endpoint 호출 → success polling. */
@@ -519,6 +560,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     setOpenConsent,
     handleConsentDetail,
     isProcessing,
+    processingMethod,
     applyCoupon,
     handleBack,
     handleSubmit,
