@@ -67,20 +67,6 @@ export function CheckoutView({ character }: CheckoutViewProps) {
       <CheckoutHeader onBack={handleBack} />
 
       <main className="flex-1 space-y-6 px-6 py-8">
-        {/* 카드사 심사용 테스트 계정 안내. */}
-        {isTestAccount && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <p className="text-[13px] font-semibold text-emerald-700">
-              테스트 계정으로 로그인됨
-            </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-emerald-600">
-              {kakaopayAvailable
-                ? "아래 카카오페이 버튼을 누르면 테스트 결제창이 뜹니다. 테스트 모드라 실제 청구는 발생하지 않으며, 결제 완료 후 유료 결과가 발급됩니다."
-                : "실제 결제 없이 유료 사주 결과를 무료로 확인할 수 있어요. 최종 결제금액은 0원이며, 아래 버튼을 누르면 바로 결과가 발급됩니다."}
-            </p>
-          </div>
-        )}
-
         <EmailField
           value={email}
           onChange={setEmail}
