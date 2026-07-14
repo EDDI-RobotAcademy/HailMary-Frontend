@@ -24,10 +24,10 @@ export function KakaoPayButton({ onClick, loading, disabled }: KakaoPayButtonPro
           <img
             src="/kakaopay-logo.svg"
             alt="카카오페이"
-            className="h-[17px] w-auto"
+            className="h-[17px] w-auto translate-y-[1px]"
             draggable={false}
           />
-          <span>결제하기</span>
+          <span className="leading-none">결제하기</span>
         </>
       )}
     </button>
