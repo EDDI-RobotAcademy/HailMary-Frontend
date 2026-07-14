@@ -16,6 +16,9 @@ import {
 
 export type ConsentDoc = "data-usage" | "payment";
 
+/** 결제수단 — kakao=포트원 카카오페이 결제창 / payapp=PayApp(카드·간편결제). */
+export type PayMethod = "kakao" | "payapp";
+
 interface RequestPaymentResponse {
   orderId: string;
   payurl: string;
@@ -59,8 +62,8 @@ export interface UseCheckoutReturn {
   couponApplied: boolean;
   /** 카드사 심사용 테스트 계정 로그인 상태 — 결제 0원 + UI 안내 분기. */
   isTestAccount: boolean;
-  /** 포트원 카카오페이 결제창 사용 여부(테스트계정 한정 또는 전체 개방). true면 결제하기 → 카카오페이. */
-  portoneActive: boolean;
+  /** 카카오페이(포트원) 결제 옵션 노출 여부. true면 카카오페이 버튼 + PayApp 버튼 공존. */
+  kakaopayAvailable: boolean;
   /** "적용" 결과 안내 문구 (유효/무효). */
   couponMessage: string | null;
   couponChecking: boolean;
@@ -74,8 +77,8 @@ export interface UseCheckoutReturn {
   isProcessing: boolean;
   applyCoupon: () => Promise<void>;
   handleBack: () => void;
-  /** 검증 → BE /request → payurl 리다이렉트 (모달 없음, 마찰 최소화). */
-  handleSubmit: () => Promise<void>;
+  /** 결제 실행. method="kakao"면 포트원 카카오페이, "payapp"면 PayApp. 쿠폰 적용 시 method 무관 무료발급. */
+  handleSubmit: (method?: PayMethod) => Promise<void>;
   /** staging/local 전용: 결제 단계 스킵 → BE bypass → success polling. */
   devBypassPay: () => Promise<void>;
 }
@@ -121,9 +124,9 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   const { profile, refreshMe } = useAuth();
   // 테스트 계정(provider=test)으로 로그인 시 → 결제 UI를 "테스트" 문구로 전환.
   const isTestAccount = profile?.provider === "test";
-  // 포트원 카카오페이 결제창 사용 여부: enabled + (전체개방 OR 테스트계정).
-  // 심사 기간엔 PORTONE_FOR_ALL=false → 테스트 계정에게만 노출, 통과 후 true로 전체 개방.
-  const portoneActive =
+  // 카카오페이(포트원) 결제 옵션 노출 여부: enabled + (전체개방 OR 테스트계정).
+  // true면 체크아웃에 '카카오페이' 버튼이 PayApp(카드·간편결제) 버튼과 함께 노출.
+  const kakaopayAvailable =
     env.PORTONE_ENABLED && (env.PORTONE_FOR_ALL || Boolean(isTestAccount));
 
   // 새 탭/리로드로 결제 페이지에 바로 진입하면 토큰은 살아있어도 in-memory 프로필이 비어
@@ -258,9 +261,10 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
   }, [coupon, character, couponChecking]);
 
   /** 결제 버튼 클릭 — 검증 → BE /request → payurl 리다이렉트 (모달 없음). */
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (method: PayMethod = "payapp") => {
     trackEvent("checkout_pay_button_click", {
       character_id: character,
+      pay_method: method,
       amount: product.priceKrw,
       email_filled: email.trim().length > 0,
       agree_data_usage: agreeDataUsage,
@@ -331,8 +335,8 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
       return;
     }
 
-    // 포트원 카카오페이 결제창 — 테스트 계정(심사) 또는 전체 개방 시. PayApp 경로 대신 사용.
-    if (portoneActive) {
+    // 카카오페이(포트원) 선택 시 — 결제창 호출. (버튼은 kakaopayAvailable일 때만 노출)
+    if (method === "kakao") {
       const orderId = makePortoneOrderId();
       savePendingCheckout({
         character,
@@ -451,7 +455,6 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     couponApplied,
     coupon,
     router,
-    portoneActive,
   ]);
 
   /** 결제 패스 (staging/local 전용) — BE bypass endpoint 호출 → success polling. */
@@ -505,7 +508,7 @@ export function useCheckout(character: CheckoutCharacter): UseCheckoutReturn {
     handleCouponBlur,
     couponApplied,
     isTestAccount,
-    portoneActive,
+    kakaopayAvailable,
     couponMessage,
     couponChecking,
     agreeDataUsage,
