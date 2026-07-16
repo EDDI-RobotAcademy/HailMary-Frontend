@@ -103,11 +103,20 @@ function SuccessBody() {
         if (raw) pending = JSON.parse(raw) as PendingCheckout;
       } catch {}
     }
+    // 포트원 카카오페이 redirect 복귀 — 쿼리에 paymentId(성공) 또는 code(실패) 부착.
+    let portonePaymentId = "";
+    let portoneCode: string | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      portonePaymentId = params.get("paymentId") ?? "";
+      portoneCode = params.get("code");
+    } catch {}
+
     let orderId = "";
     try {
       orderId = new URLSearchParams(window.location.search).get("order_id") ?? "";
     } catch {}
-    if (!orderId) orderId = pending?.orderId ?? "";
+    if (!orderId) orderId = portonePaymentId || (pending?.orderId ?? "");
 
     if (!orderId) {
       setScreen("error");
@@ -165,7 +174,32 @@ function SuccessBody() {
       timer = setTimeout(poll, POLL_INTERVAL_MS);
     };
 
-    poll();
+    // 포트원 복귀면 서버 검증(complete)을 먼저 — 그래야 폴링이 DONE을 본다.
+    const init = async () => {
+      if (portoneCode) {
+        // 포트원 결제 실패/취소 (사용자 취소 등)
+        if (!cancelled) setScreen("cancelled");
+        return;
+      }
+      if (portonePaymentId) {
+        try {
+          await api.post(
+            "/api/payments/portone/complete",
+            { paymentId: portonePaymentId },
+            { auth: "account" },
+          );
+        } catch (err) {
+          // 검증 실패(400)=결제 미완료 → 취소 화면. 그 외(네트워크 등)는 웹훅 백업 기대하고 폴링 진행.
+          if (err instanceof ApiError && err.status === 400) {
+            if (!cancelled) setScreen("cancelled");
+            return;
+          }
+        }
+      }
+      poll();
+    };
+
+    init();
 
     return () => {
       cancelled = true;

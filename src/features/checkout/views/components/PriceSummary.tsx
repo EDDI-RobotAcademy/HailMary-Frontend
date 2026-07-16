@@ -4,14 +4,22 @@ interface PriceSummaryProps {
   product: CheckoutProduct;
   /** 쿠폰 적용 시 최종 0원 표시. */
   freeWithCoupon?: boolean;
+  /** 카드사 심사용 테스트 계정 — 최종 0원 + "테스트 계정 무료" 표시. */
+  testFree?: boolean;
 }
 
-export function PriceSummary({ product, freeWithCoupon = false }: PriceSummaryProps) {
+export function PriceSummary({
+  product,
+  freeWithCoupon = false,
+  testFree = false,
+}: PriceSummaryProps) {
   const salePrice = formatKrw(product.priceKrw);
   const originalPrice = formatKrw(product.originalPriceKrw);
   const discountAmount = product.originalPriceKrw - product.priceKrw;
   // 정가 대비 할인율 — 과대표시 방지 위해 내림 처리.
   const discountRate = Math.floor((discountAmount / product.originalPriceKrw) * 100);
+  // 쿠폰 또는 테스트 계정이면 최종 0원.
+  const isFree = freeWithCoupon || testFree;
 
   return (
     <section className="space-y-3">
@@ -38,9 +46,16 @@ export function PriceSummary({ product, freeWithCoupon = false }: PriceSummaryPr
           </span>
         </div>
 
-        {freeWithCoupon && (
+        {freeWithCoupon && !testFree && (
           <div className="flex items-center justify-between text-[13px] text-emerald-600">
             <span>쿠폰 할인</span>
+            <span>-{salePrice}</span>
+          </div>
+        )}
+
+        {testFree && (
+          <div className="flex items-center justify-between text-[13px] text-emerald-600">
+            <span>테스트 계정 무료</span>
             <span>-{salePrice}</span>
           </div>
         )}
@@ -51,7 +66,7 @@ export function PriceSummary({ product, freeWithCoupon = false }: PriceSummaryPr
             최종 결제금액
           </span>
           <span className="text-[18px] font-extrabold text-rose-600">
-            {freeWithCoupon ? formatKrw(0) : salePrice}
+            {isFree ? formatKrw(0) : salePrice}
           </span>
         </div>
       </div>

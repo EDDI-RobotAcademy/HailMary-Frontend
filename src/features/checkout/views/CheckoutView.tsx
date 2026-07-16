@@ -11,6 +11,7 @@ import { EmailField } from "./components/EmailField";
 import { PriceSummary } from "./components/PriceSummary";
 import { CouponField } from "./components/CouponField";
 import { CheckoutCta } from "./components/CheckoutCta";
+import { KakaoPayButton } from "./components/KakaoPayButton";
 import { ConsentRow } from "./components/ConsentRow";
 
 interface CheckoutViewProps {
@@ -28,6 +29,8 @@ export function CheckoutView({ character }: CheckoutViewProps) {
     setCoupon,
     handleCouponBlur,
     couponApplied,
+    isTestAccount,
+    kakaopayAvailable,
     couponMessage,
     couponChecking,
     agreeDataUsage,
@@ -38,6 +41,7 @@ export function CheckoutView({ character }: CheckoutViewProps) {
     setOpenConsent,
     handleConsentDetail,
     isProcessing,
+    processingMethod,
     applyCoupon,
     handleBack,
     handleSubmit,
@@ -73,28 +77,70 @@ export function CheckoutView({ character }: CheckoutViewProps) {
 
         <hr className="border-white/[0.06]" />
 
-        <PriceSummary product={product} freeWithCoupon={couponApplied} />
-
-        <CouponField
-          value={coupon}
-          onChange={setCoupon}
-          onBlur={handleCouponBlur}
-          onApply={applyCoupon}
-          applied={couponApplied}
-          message={couponMessage}
-          checking={couponChecking}
+        {/* 카카오페이(포트원) 있으면 실제 결제라 0원 표시 X. 0원 무통과 폴백일 때만 testFree. */}
+        <PriceSummary
+          product={product}
+          freeWithCoupon={couponApplied}
+          testFree={isTestAccount && !kakaopayAvailable}
         />
+
+        {/* 테스트 계정은 쿠폰이 무의미 — 혼동 방지 위해 쿠폰 입력 숨김. */}
+        {!isTestAccount && (
+          <CouponField
+            value={coupon}
+            onChange={setCoupon}
+            onBlur={handleCouponBlur}
+            onApply={applyCoupon}
+            applied={couponApplied}
+            message={couponMessage}
+            checking={couponChecking}
+          />
+        )}
 
         {/* PayApp 결제: 인페이지 위젯 없음. 결제수단·약관은 PayApp 페이지가 처리.
             우리 페이지의 동의(ConsentRow)는 우리 서비스의 개인정보·결제진행 동의 별도. */}
 
-        <CheckoutCta
-          onSubmit={handleSubmit}
-          loading={isProcessing}
-          disabled={false}
-          label={couponApplied ? "무료로 받기" : "결제하기"}
-          loadingLabel={couponApplied ? "처리 중…" : undefined}
-        />
+        {couponApplied ? (
+          // 쿠폰 무료발급 — 결제수단 무관 단일 버튼.
+          <CheckoutCta
+            onSubmit={() => handleSubmit()}
+            loading={isProcessing}
+            disabled={false}
+            label="무료로 받기"
+            loadingLabel="처리 중…"
+          />
+        ) : kakaopayAvailable ? (
+          // 카카오페이(포트원) + PayApp(카드·간편결제) 공존.
+          <div className="space-y-2">
+            {/* 눌린 버튼만 로딩, 나머지는 disabled — 두 버튼이 동시에 도는 오해 방지(G). */}
+            <KakaoPayButton
+              onClick={() => handleSubmit("kakao")}
+              loading={processingMethod === "kakao"}
+              disabled={isProcessing}
+            />
+            <CheckoutCta
+              onSubmit={() => handleSubmit("payapp")}
+              loading={processingMethod === "payapp"}
+              disabled={isProcessing}
+              label="카드 · 간편결제"
+              loadingLabel="결제창을 여는 중…"
+            />
+          </div>
+        ) : (
+          // 포트원 미개방 — PayApp 단일.
+          <CheckoutCta
+            onSubmit={() => handleSubmit("payapp")}
+            loading={isProcessing}
+            disabled={false}
+            label="결제하기"
+          />
+        )}
+
+        {/* 서비스 제공기간 명시 — 이용약관 제14조 4항. 카카오페이 입점 심사 요청(2026-07-02):
+            결제 고객이 잘 인지할 수 있는 구좌에 이용기간 추가 표기. */}
+        <p className="text-center text-[12px] text-neutral-500">
+          * 유료 결과물의 이용기간은 결제 완료일로부터 30일까지입니다.
+        </p>
 
         {/* ⚠️ staging/local 전용 — 운영 도메인에서는 노출 X (isDevBypassEnabled). */}
         {devBypass && (

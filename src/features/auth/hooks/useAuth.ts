@@ -93,6 +93,8 @@ export interface UseAuthResult {
     provider: AuthProvider,
     params: { code: string; state: string | null },
   ) => Promise<{ returnTo: string }>;
+  /** 카드사 심사용 테스트 로그인(ID/PW). OAuth와 동일하게 토큰/프로필 저장. */
+  testLogin: (username: string, password: string) => Promise<void>;
   /** /api/auth/me 재조회 (토큰만 있고 프로필 없을 때). 401이면 토큰 정리. */
   refreshMe: () => Promise<void>;
   logout: () => void;
@@ -159,6 +161,20 @@ export function useAuth(): UseAuthResult {
     [],
   );
 
+  const testLogin = useCallback(
+    async (username: string, password: string): Promise<void> => {
+      // 카드사 심사용 — OAuth 왕복 없이 ID/PW로 계정 JWT 발급. 응답형은 소셜 로그인과 동일.
+      const raw = await api.post<SocialLoginRawResponse>("/api/auth/test-login", {
+        username,
+        password,
+      });
+      authStore.set(raw.access_token);
+      setProfile(normalizeProfile(raw.profile));
+      trackEvent("login_complete", { provider: "test", is_new_account: raw.is_new_account });
+    },
+    [],
+  );
+
   const refreshMe = useCallback((): Promise<void> => loadProfile(), []);
 
   const logout = useCallback(() => {
@@ -183,6 +199,7 @@ export function useAuth(): UseAuthResult {
     profile,
     startLogin,
     completeLogin,
+    testLogin,
     refreshMe,
     logout,
     deleteAccount,
